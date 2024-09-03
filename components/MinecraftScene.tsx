@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { createBlock } from "@/utils/createBlock";
 
 const MinecraftScene: React.FC = () => {
     const mountRef = useRef<HTMLDivElement | null>(null);
@@ -42,12 +43,12 @@ const MinecraftScene: React.FC = () => {
         const moveSpeed = 0.25;
         const rotateSpeed = 0.075;
         const boundary = {
-            minX: -49,
-            maxX: 49,
+            minX: -28,
+            maxX: 28,
             minY: 1,
             maxY: 19,
-            minZ: -49,
-            maxZ: 49,
+            minZ: -28,
+            maxZ: 28,
         };
 
         const collisionObjects: THREE.Mesh[] = [];
@@ -100,11 +101,20 @@ const MinecraftScene: React.FC = () => {
         };
 
         const textureLoader = new THREE.TextureLoader();
-        const grassTexture = textureLoader.load('/textures/grass.png');
-        const stoneTexture = textureLoader.load('/textures/stone.png');
-        const dirtTexture = textureLoader.load('/textures/dirt.png');
-        const woodTexture = textureLoader.load('/textures/wood.png');
-        const leafTexture = textureLoader.load('/textures/leaf.png');
+        const textures = {
+            grass: textureLoader.load('/textures/grass.png'),
+            stone: textureLoader.load('/textures/stone.png'),
+            dirt: textureLoader.load('/textures/dirt.png'),
+            wood: textureLoader.load('/textures/wood.png'),
+            leaf: textureLoader.load('/textures/leaf.png'),
+        };
+
+        // Optimize textures (e.g., setting min and mag filters)
+        Object.values(textures).forEach(texture => {
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        });
 
         const skyColor = new THREE.Color(0x87CEEB);
         scene.background = skyColor;
@@ -112,52 +122,38 @@ const MinecraftScene: React.FC = () => {
         const ambientLight = new THREE.AmbientLight(0x606060);
         scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(5, 10, 5);
         directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 1024;
-        directionalLight.shadow.mapSize.height = 1024;
+        directionalLight.shadow.mapSize.width = 512; // Reduced shadow map size
+        directionalLight.shadow.mapSize.height = 512; // Reduced shadow map size
         scene.add(directionalLight);
 
         const cubeSize = 1;
-        const gridSize = 100;
+        const gridSize = 60; // Reduced grid size
         const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-
-        const createBlock = (texture: THREE.Texture, x: number, y: number, z: number) => {
-            const material = new THREE.MeshStandardMaterial({
-                map: texture,
-                transparent: true,
-                opacity: 1.0,
-                alphaTest: 0.1
-            });
-            const block = new THREE.Mesh(geometry, material);
-            block.position.set(x, y, z);
-            block.castShadow = true;
-            block.receiveShadow = true;
-            return block;
-        };
 
         for (let x = -gridSize / 2; x < gridSize / 2; x++) {
             for (let z = -gridSize / 2; z < gridSize / 2; z++) {
-                const texture = Math.random() > 0.5 ? grassTexture : dirtTexture;
-                const block = createBlock(texture, x * cubeSize, 0, z * cubeSize);
+                const texture = Math.random() > 0.5 ? textures.grass : textures.dirt;
+                const block = createBlock(texture, x * cubeSize, 0, z * cubeSize, geometry);
                 scene.add(block);
             }
         }
 
         const addTree = (x: number, z: number) => {
             for (let y = 1; y <= 3; y++) {
-                const trunkBlock = createBlock(woodTexture, x, y, z);
+                const trunkBlock = createBlock(textures.wood, x, y, z, geometry);
                 scene.add(trunkBlock);
                 collisionObjects.push(trunkBlock);
             }
 
-            const leafHeight = 3;
+            const leafHeight = 4;
             for (let y = leafHeight; y > 0; y--) {
                 const layerY = 4 + (leafHeight - y);
                 for (let offsetX = -y; offsetX <= y; offsetX++) {
                     for (let offsetZ = -y; offsetZ <= y; offsetZ++) {
-                        const leafBlock = createBlock(leafTexture, x + offsetX, layerY, z + offsetZ);
+                        const leafBlock = createBlock(textures.leaf, x + offsetX, layerY, z + offsetZ, geometry);
                         scene.add(leafBlock);
                         collisionObjects.push(leafBlock);
                     }
@@ -165,21 +161,24 @@ const MinecraftScene: React.FC = () => {
             }
         };
 
-        for (let i = 0; i < 10; i++) {
-            const x = Math.floor(Math.random() * gridSize) - gridSize / 2;
-            const z = Math.floor(Math.random() * gridSize) - gridSize / 2;
-            addTree(x, z);
+        // Add trees around the edges
+        const edgeDistance = gridSize / 2 - 2; // Place trees closer to the edge
+        for (let i = -edgeDistance; i <= edgeDistance; i += 5) {
+            addTree(-edgeDistance, i); // Left edge
+            addTree(edgeDistance, i); // Right edge
+            addTree(i, -edgeDistance); // Front edge
+            addTree(i, edgeDistance); // Back edge
         }
 
         const planeGeometry = new THREE.PlaneGeometry(gridSize * cubeSize, gridSize * cubeSize);
-        const planeMaterial = new THREE.MeshStandardMaterial({ map: grassTexture });
+        const planeMaterial = new THREE.MeshStandardMaterial({ map: textures.grass });
         const plane = new THREE.Mesh(planeGeometry, planeMaterial);
         plane.rotation.x = -Math.PI / 2;
         plane.position.y = -0.5;
         plane.receiveShadow = true;
         scene.add(plane);
 
-        cameraHelper.position.set(5, 2, 5);
+        cameraHelper.position.set(0, 2, 0); // Start in the center
 
         animate();
 
@@ -190,11 +189,8 @@ const MinecraftScene: React.FC = () => {
             document.removeEventListener('keydown', onKeyDown);
             document.removeEventListener('keyup', onKeyUp);
 
-            grassTexture.dispose();
-            stoneTexture.dispose();
-            woodTexture.dispose();
-            dirtTexture.dispose();
-            leafTexture.dispose();
+            // Dispose of textures and materials
+            Object.values(textures).forEach(texture => texture.dispose());
         };
     }, []);
 
