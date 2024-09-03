@@ -109,7 +109,6 @@ const MinecraftScene: React.FC = () => {
             leaf: textureLoader.load('/textures/leaf.png'),
         };
 
-        // Optimize textures (e.g., setting min and mag filters)
         Object.values(textures).forEach(texture => {
             texture.minFilter = THREE.LinearFilter;
             texture.magFilter = THREE.LinearFilter;
@@ -125,12 +124,12 @@ const MinecraftScene: React.FC = () => {
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(5, 10, 5);
         directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 512; // Reduced shadow map size
-        directionalLight.shadow.mapSize.height = 512; // Reduced shadow map size
+        directionalLight.shadow.mapSize.width = 512;
+        directionalLight.shadow.mapSize.height = 512;
         scene.add(directionalLight);
 
         const cubeSize = 1;
-        const gridSize = 60; // Reduced grid size
+        const gridSize = 60;
         const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
 
         for (let x = -gridSize / 2; x < gridSize / 2; x++) {
@@ -161,13 +160,12 @@ const MinecraftScene: React.FC = () => {
             }
         };
 
-        // Add trees around the edges
-        const edgeDistance = gridSize / 2 - 2; // Place trees closer to the edge
+        const edgeDistance = gridSize / 2 - 2;
         for (let i = -edgeDistance; i <= edgeDistance; i += 5) {
-            addTree(-edgeDistance, i); // Left edge
-            addTree(edgeDistance, i); // Right edge
-            addTree(i, -edgeDistance); // Front edge
-            addTree(i, edgeDistance); // Back edge
+            addTree(-edgeDistance, i);
+            addTree(edgeDistance, i);
+            addTree(i, -edgeDistance);
+            addTree(i, edgeDistance);
         }
 
         const planeGeometry = new THREE.PlaneGeometry(gridSize * cubeSize, gridSize * cubeSize);
@@ -178,7 +176,7 @@ const MinecraftScene: React.FC = () => {
         plane.receiveShadow = true;
         scene.add(plane);
 
-        cameraHelper.position.set(0, 2, 0); // Start in the center
+        cameraHelper.position.set(0, 2, 28);
 
         animate();
 
@@ -189,7 +187,6 @@ const MinecraftScene: React.FC = () => {
             document.removeEventListener('keydown', onKeyDown);
             document.removeEventListener('keyup', onKeyUp);
 
-            // Dispose of textures and materials
             Object.values(textures).forEach(texture => texture.dispose());
         };
     }, []);
